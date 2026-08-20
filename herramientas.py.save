@@ -1,0 +1,148 @@
+
+
+
+from ollama import chat
+from herramientas import buscar_lead, buscar_contacto, buscar_cuenta
+
+MODELO = "qwen3:4b"
+
+SYSTEM_PROMPT = """
+Eres Salesforce Agent, un agente especializado en Salesforce.
+
+Tu función es ayudar a administrar y analizar información relacionada
+con Salesforce.
+
+Tus áreas principales son:
+
+- Leads
+- Contactos
+- Cuentas
+- Oportunidades
+- Casos
+- Automatizaciones
+- Flujos
+- Apex
+- SOQL
+- Integraciones
+- APIs de Salesforce
+- Buenas prácticas de CRM
+
+Tienes acceso a estas herramientas:
+
+- buscar_lead
+- buscar_contacto
+
+REGLAS:
+
+1. Si el usuario pregunta por un Lead específico, utiliza buscar_lead.
+2. Si el usuario pregunta por un Contacto específico, utiliza buscar_contacto.
+3. No inventes información de Salesforce.
+4. Si una herramienta devuelve información, utiliza esos datos para construir la respuesta.
+5. Si no encuentras el registro, informa claramente que no fue encontrado.
+6. Si la pregunta es conceptual, puedes responder directamente sin utilizar una herramienta.
+7. Por ahora los datos son locales de prueba.
+8. No afirmes que estás conectado a Salesforce real.
+"""
+
+print("======================================")
+print("     SALESFORCE AGENT - LOCAL")
+print("======================================")
+print("Modelo:", MODELO)
+print("Escribe 'salir' para terminar.")
+print()
+
+while True:
+
+    usuario = input("Tú > ")
+
+    if usuario.lower() in ["salir", "exit", "quit"]:
+        print("Agente > Hasta luego.")
+        break
+
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": usuario
+        }
+    ]
+
+    respuesta = chat(
+        model=MODELO,
+        messages=messages,
+        tools=[buscar_lead, buscar_contacto]
+    )
+
+    if respuesta.message.tool_calls:
+
+        messages.append(respuesta.message)
+
+        for llamada in respuesta.message.tool_calls:
+
+            nombre = llamada.function.name
+            argumentos = llamada.function.arguments
+
+            if nombre == "buscar_lead":
+
+                resultado = buscar_lead(**argumentos)
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "content": str(resultado)
+                    }
+                )
+
+            elif nombre == "buscar_contacto":
+
+                resultado = buscar_contacto(**argumentos)
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "content": str(resultado)
+                    }
+                )
+
+        respuesta = chat(
+            model=MODELO,
+            messages=messages,
+            tools=[buscar_lead, buscar_contacto]
+        )
+
+    print()
+    print("Agente >")
+    print(respuesta.message.content)
+    print()
+def buscar_cuenta(nombre):
+    cuentas = [
+        {
+            "nombre": "Tecnología ABC",
+            "industria": "Tecnología",
+            "ciudad": "Bogotá",
+            "estado": "Activa"
+        },
+        {
+            "nombre": "Comercial XYZ",
+            "industria": "Comercio",
+            "ciudad": "Medellín",
+            "estado": "Activa"
+        },
+        {
+            "nombre": "Soluciones SAS",
+            "industria": "Servicios",
+            "ciudad": "Bucaramanga",
+            "estado": "Activa"
+        }
+    ]
+
+    resultados = [
+        cuenta for cuenta in cuentas
+        if nombre.lower() in cuenta["nombre"].lower()
+    ]
+
+    return resultados
+
